@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0d1f2d">
+<title>RECTAS</title>
+
+<!-- PWA Manifest embebido -->
+<script>
+(function(){
+  const manifest = {
+    name: "RECTAS",
+    short_name: "RECTAS",
+    description: "Cálculo topográfico de rectas",
+    start_url: ".",
+    display: "standalone",
+    background_color: "#0a1520",
+    theme_color: "#0d1f2d",
+    orientation: "portrait",
+    icons: [
+      {
+        src: "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" rx="32" fill="#0a1520"/><text x="96" y="130" font-size="100" text-anchor="middle">📐</text></svg>'),
+        sizes: "192x192",
+        type: "image/svg+xml",
+        purpose: "any maskable"
+      },
+      {
+        src: "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="80" fill="#0a1520"/><text x="256" y="340" font-size="280" text-anchor="middle">📐</text></svg>'),
+        sizes: "512x512",
+        type: "image/svg+xml",
+        purpose: "any maskable"
+      }
+    ]
+  };
+  const blob = new Blob([JSON.stringify(manifest)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('link');
+  link.rel = 'manifest';
+  link.href = url;
+  document.currentScript.parentElement.appendChild(link);
+})();
+</script>
+
+
+<style>
+  :root {
+    --bg: #0a1520; --surface: #0f2235; --border: #1e4060;
+    --accent: #00c8ff; --accent2: #00ff9d; --text: #cce8f4;
+    --text-dim: #5a8aa8; --input-bg: #071828;
+    --result-bg: #0a2e1a; --result-border: #00ff9d44;
+    --title-bg: #05101a; --red: #ff4d6d; --warn: #ffb347;
+    --radius: 8px;
+    --font-mono: 'Courier New', Courier, monospace;
+    --font-main: 'Segoe UI', Arial, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { overscroll-behavior-y: none; overflow-x: hidden; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font-main); min-height: 100vh; overflow-x: hidden; }
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background-image: linear-gradient(rgba(0,200,255,0.03) 1px,transparent 1px), linear-gradient(90deg,rgba(0,200,255,0.03) 1px,transparent 1px);
+    background-size: 40px 40px; pointer-events: none; z-index: 0;
+  }
+  #app { position: relative; z-index: 1; max-width: 480px; margin: 0 auto; padding: 0 0 80px; }
+  header {
+    background: linear-gradient(135deg,#071520 0%,#0d2540 100%);
+    border-bottom: 2px solid var(--accent); padding: 18px 20px 14px;
+    position: sticky; top: 0; z-index: 100; box-shadow: 0 4px 30px rgba(0,200,255,0.15);
+  }
+  .header-inner { display: flex; align-items: center; gap: 14px; }
+  .logo-icon {
+    width: 42px; height: 42px; background: linear-gradient(135deg,var(--accent),var(--accent2));
+    border-radius: 10px; display: flex; align-items: center; justify-content: center;
+    font-size: 20px; box-shadow: 0 0 20px rgba(0,200,255,0.4); flex-shrink: 0;
+  }
+  .app-title {
+    font-size: 26px; font-weight: 900; letter-spacing: 6px;
+    background: linear-gradient(90deg,var(--accent),var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; text-transform: uppercase;
+  }
+  .app-sub { font-size: 10px; color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase; margin-top: 2px; }
+  .tabs { display: flex; background: var(--title-bg); border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab {
+    flex: 1; min-width: 80px; padding: 12px 6px; text-align: center;
+    font-size: 10px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;
+    color: var(--text-dim); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; white-space: nowrap;
+  }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); background: rgba(0,200,255,0.05); }
+  .tab:hover:not(.active) { color: var(--text); background: rgba(255,255,255,0.03); }
+  .section { display: none; padding: 16px; }
+  .section.active { display: block; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 14px; overflow: hidden; }
+  .card-header {
+    background: var(--title-bg); border-bottom: 1px solid var(--border);
+    padding: 10px 14px; font-size: 11px; font-weight: 700; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--accent); display: flex; align-items: center; gap: 8px;
+  }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); animation: pulse 2s infinite; }
+  .dot.g { background: var(--accent2); box-shadow: 0 0 8px var(--accent2); }
+  .dot.w { background: var(--warn); box-shadow: 0 0 8px var(--warn); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .card-body { padding: 14px; }
+  .field-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .field-row:last-child { margin-bottom: 0; }
+  .field-label { font-size: 11px; color: var(--text-dim); font-family: var(--font-mono); min-width: 90px; flex-shrink: 0; }
+  input[type="number"] {
+    flex: 1; background: var(--input-bg); border: 1px solid var(--border);
+    border-radius: var(--radius); color: var(--text); font-family: var(--font-mono);
+    font-size: 14px; padding: 9px 12px; outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s; -moz-appearance: textfield; width: 100%;
+  }
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
+  input[type="number"]:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0,200,255,0.15); }
+  input[type="number"]::placeholder { color: var(--text-dim); opacity: 0.5; }
+  .result-row {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+    background: var(--result-bg); border: 1px solid var(--result-border);
+    border-radius: var(--radius); padding: 10px 12px;
+  }
+  .result-row:last-child { margin-bottom: 0; }
+  .result-label { font-size: 11px; color: var(--accent2); font-family: var(--font-mono); min-width: 90px; flex-shrink: 0; font-weight: 600; }
+  .result-value { flex: 1; font-family: var(--font-mono); font-size: 15px; color: #fff; text-align: right; }
+  .result-value.hl { color: var(--accent2); font-size: 16px; text-shadow: 0 0 10px rgba(0,255,157,0.4); }
+  .auto-row {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+    background: rgba(0,200,255,0.05); border: 1px solid rgba(0,200,255,0.18);
+    border-radius: var(--radius); padding: 10px 12px;
+  }
+  .auto-row:last-child { margin-bottom: 0; }
+  .auto-label { font-size: 11px; color: var(--accent); font-family: var(--font-mono); min-width: 90px; flex-shrink: 0; }
+  .auto-value { flex: 1; font-family: var(--font-mono); font-size: 13px; color: var(--text); text-align: right; }
+  .sep { height: 1px; background: linear-gradient(90deg,transparent,var(--border),transparent); margin: 14px 0; }
+  .mini-title { font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  .az-boxes { display: flex; gap: 8px; }
+  .az-box { flex: 1; text-align: center; }
+  .az-box-lbl { font-size: 10px; color: var(--text-dim); margin-bottom: 4px; }
+  .az-box-val { font-size: 20px; color: var(--accent); font-family: var(--font-mono); }
+  .btn-reset {
+    width: 100%; padding: 12px; background: transparent; border: 1px solid var(--border);
+    border-radius: var(--radius); color: var(--text-dim); font-family: var(--font-main);
+    font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase;
+    cursor: pointer; transition: all 0.2s; margin-top: 6px;
+  }
+  @media (hover: hover) {
+    .btn-reset:hover { border-color: var(--red); color: var(--red); background: rgba(255,77,109,0.05); }
+  }
+  .btn-reset:active { border-color: var(--red); color: var(--red); background: rgba(255,77,109,0.05); }
+  #install-banner {
+    display: none; background: linear-gradient(135deg,#0a2540,#061830);
+    border: 1px solid var(--accent); border-radius: 12px; padding: 14px;
+    position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%);
+    width: calc(100% - 32px); max-width: 448px; z-index: 200;
+    box-shadow: 0 8px 40px rgba(0,200,255,0.2);
+  }
+  .install-text { font-size: 12px; color: var(--text); margin-bottom: 10px; }
+  .install-text strong { color: var(--accent2); }
+  .install-btns { display: flex; gap: 8px; }
+  .btn-install { flex: 1; padding: 9px; border-radius: var(--radius); background: var(--accent); color: #000; font-weight: 700; font-size: 12px; border: none; cursor: pointer; text-transform: uppercase; }
+  .btn-dismiss { padding: 9px 14px; border-radius: var(--radius); background: transparent; color: var(--text-dim); font-size: 12px; border: 1px solid var(--border); cursor: pointer; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header>
+    <div class="header-inner">
+      <div class="logo-icon">📐</div>
+      <div>
+        <div class="app-title">RECTAS</div>
+        <div class="app-sub">Cálculo topográfico</div>
+      </div>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab(0)">AZ y DH</div>
+    <div class="tab" onclick="switchTab(1)">Replanteo</div>
+    <div class="tab" onclick="switchTab(2)">ABS / ORD</div>
+  </div>
+
+  <!-- TAB 0 -->
+  <div class="section active" id="tab0">
+    <div class="card">
+      <div class="card-header"><div class="dot"></div>Coordenada Inicial</div>
+      <div class="card-body">
+        <div class="field-row"><div class="field-label">Norte ➣</div><input type="number" id="ini_norte" placeholder="0.000" step="any" oninput="calcAll()"></div>
+        <div class="field-row"><div class="field-label">Este ➣</div><input type="number" id="ini_este" placeholder="0.000" step="any" oninput="calcAll()"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="dot"></div>Coordenada Visada</div>
+      <div class="card-body">
+        <div class="field-row"><div class="field-label">Norte ➣</div><input type="number" id="vis_norte" placeholder="0.000" step="any" oninput="calcAll()"></div>
+        <div class="field-row"><div class="field-label">Este ➣</div><input type="number" id="vis_este" placeholder="0.000" step="any" oninput="calcAll()"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="dot g"></div>Resultados</div>
+      <div class="card-body">
+        <div class="result-row"><div class="result-label">DH ➣</div><div class="result-value hl" id="res_dh">—</div></div>
+        <div class="result-row"><div class="result-label">AZ ➣</div><div class="result-value hl" id="res_az">—</div></div>
+        <div class="sep"></div>
+        <div class="mini-title">AZ desglosado</div>
+        <div class="az-boxes">
+          <div class="az-box"><div class="az-box-lbl">(°) Grados</div><div class="az-box-val" id="az_g">—</div></div>
+          <div class="az-box"><div class="az-box-lbl">(') Minutos</div><div class="az-box-val" id="az_m">—</div></div>
+          <div class="az-box"><div class="az-box-lbl">(") Segundos</div><div class="az-box-val" id="az_s">—</div></div>
+        </div>
+      </div>
+    </div>
+    <button class="btn-reset" onclick="resetTab0()">↺ Limpiar sección</button>
+  </div>
+
+  <!-- TAB 1: Replanteo -->
+  <div class="section" id="tab1">
+
+    <div class="card">
+      <div class="card-header"><div class="dot"></div>AZ Calculado — desde AZ y DH</div>
+      <div class="card-body">
+        <div class="auto-row"><div class="auto-label">AZ ➣</div><div class="auto-value" id="rep_az_display">— (calcule primero)</div></div>
+        <div class="az-boxes" style="margin-top:10px;">
+          <div class="az-box"><div class="az-box-lbl">(°)</div><div class="az-box-val" id="rep_az_g_d">—</div></div>
+          <div class="az-box"><div class="az-box-lbl">(')</div><div class="az-box-val" id="rep_az_m_d">—</div></div>
+          <div class="az-box"><div class="az-box-lbl">(")</div><div class="az-box-val" id="rep_az_s_d">—</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><div class="dot"></div>Coordenada Inicial — desde AZ y DH</div>
+      <div class="card-body">
+        <div class="auto-row"><div class="auto-label">Norte ➣</div><div class="auto-value" id="rep_ini_norte_disp">— (calcule primero)</div></div>
+        <div class="auto-row"><div class="auto-label">Este ➣</div><div class="auto-value" id="rep_ini_este_disp">— (calcule primero)</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><div class="dot"></div>Datos a Calcular</div>
+      <div class="card-body">
+        <div class="field-row"><div class="field-label">ABS ➣</div><input type="number" id="rep_abs" placeholder="distancia ABS" step="any" oninput="calcAll()"></div>
+        <div class="field-row"><div class="field-label">ORD ➣</div><input type="number" id="rep_ord" placeholder="distancia ORD" step="any" oninput="calcAll()"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><div class="dot g"></div>Coordenadas del Punto Calculado</div>
+      <div class="card-body">
+        <div class="result-row"><div class="result-label">Norte ➣</div><div class="result-value hl" id="rep_res_norte">—</div></div>
+        <div class="result-row"><div class="result-label">Este ➣</div><div class="result-value hl" id="rep_res_este">—</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><div class="dot w"></div>Coordenadas Estación (equipo armado)</div>
+      <div class="card-body">
+        <div class="field-row"><div class="field-label">Norte ➣</div><input type="number" id="est_norte" placeholder="Norte estación" step="any" oninput="calcAll()"></div>
+        <div class="field-row"><div class="field-label">Este ➣</div><input type="number" id="est_este" placeholder="Este estación" step="any" oninput="calcAll()"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><div class="dot g"></div>Estación → Punto Calculado</div>
+      <div class="card-body">
+        <div class="result-row"><div class="result-label">DH ➣</div><div class="result-value hl" id="rep_est_dh">—</div></div>
+        <div class="result-row"><div class="result-label">AZ ➣</div><div class="result-value hl" id="rep_est_az">—</div></div>
+        <div class="sep"></div>
+        <div class="mini-title">Diferencia con campo</div>
+        <div class="field-row"><div class="field-label">DH Leída ➣</div><input type="number" id="rep_dh_leida" placeholder="DH medida en campo" step="any" oninput="calcAll()"></div>
+        <div class="result-row" style="margin-top:10px;">
+          <div class="result-label" style="color:var(--warn);">Dif. DH ➣</div>
+          <div class="result-value" id="rep_dif_dh" style="color:var(--warn);">—</div>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-reset" onclick="resetTab1()">↺ Limpiar sección</button>
+  </div>
+
+  <!-- TAB 2: ABS / ORD + Diferencias -->
+  <div class="section" id="tab2">
+    <div class="card">
+      <div class="card-header"><div class="dot"></div>Ingreso de Coordenadas</div>
+      <div class="card-body">
+        <div class="field-row"><div class="field-label">Norte ➣</div><input type="number" id="coord_norte" placeholder="0.000" step="any" oninput="calcAll()"></div>
+        <div class="field-row"><div class="field-label">Este ➣</div><input type="number" id="coord_este" placeholder="0.000" step="any" oninput="calcAll()"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="dot g"></div>Resultados ABS / ORD</div>
+      <div class="card-body">
+        <div class="result-row"><div class="result-label">ABS es ➣</div><div class="result-value hl" id="coord_abs">—</div></div>
+        <div class="result-row"><div class="result-label">ORD es ➣</div><div class="result-value hl" id="coord_ord">—</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="dot w"></div>Valores Leídos en Campo</div>
+      <div class="card-body">
+        <div class="field-row"><div class="field-label">ABS Leída ➣</div><input type="number" id="dif_abs_leida" placeholder="0.000" step="any" oninput="calcAll()"></div>
+        <div class="field-row"><div class="field-label">ORD Leída ➣</div><input type="number" id="dif_ord_leida" placeholder="0.000" step="any" oninput="calcAll()"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="dot g"></div>Diferencias</div>
+      <div class="card-body">
+        <div class="auto-row"><div class="auto-label">ABS calc.</div><div class="auto-value" id="dif_abs_calc">—</div></div>
+        <div class="result-row"><div class="result-label">ABS dif. ➣</div><div class="result-value hl" id="dif_abs">—</div></div>
+        <div class="sep"></div>
+        <div class="auto-row"><div class="auto-label">ORD calc.</div><div class="auto-value" id="dif_ord_calc">—</div></div>
+        <div class="result-row"><div class="result-label">ORD dif. ➣</div><div class="result-value hl" id="dif_ord">—</div></div>
+      </div>
+    </div>
+    <button class="btn-reset" onclick="resetTab2()">↺ Limpiar sección</button>
+  </div>
+
+</div>
+
+<div id="install-banner">
+  <div class="install-text">📲 Instala <strong>RECTAS</strong> en tu celular para usarla sin internet.</div>
+  <div class="install-btns">
+    <button class="btn-install" id="btn-install">Instalar App</button>
+    <button class="btn-dismiss" onclick="dismissInstall()">Ahora no</button>
+  </div>
+</div>
+
+<script>
+function switchTab(n) {
+  document.querySelectorAll('.section').forEach((s,i) => s.classList.toggle('active', i===n));
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', i===n));
+}
+
+const v = id => { const x = parseFloat(document.getElementById(id).value); return isNaN(x) ? null : x; };
+// ── CAMBIO: decimales por defecto = 3 ──
+const fmt = (n, d=3) => (n===null||!isFinite(n)) ? '—' : n.toFixed(d);
+const set = (id, val) => { const el=document.getElementById(id); if(el) el.textContent=val; };
+
+function fmtAZ(deg) {
+  if (deg===null||!isFinite(deg)) return '—';
+  const g = Math.floor(deg);
+  const mf = (deg - g) * 60;
+  const m = Math.floor(mf);
+  const s = Math.round((mf - m) * 60);
+  return `${g}° ${String(m).padStart(2,'0')}' ${String(s).padStart(2,'0')}"`;
+}
+
+function azParts(deg) {
+  if (deg===null||!isFinite(deg)) return {g:'—',m:'—',s:'—'};
+  const g = Math.floor(deg);
+  const mf = (deg - g) * 60;
+  const m = Math.floor(mf);
+  const s = Math.round((mf - m) * 60);
+  return { g, m: String(m).padStart(2,'0'), s: String(s).padStart(2,'0') };
+}
+
+// Excel ATAN2(dN, dE) → JS Math.atan2(dE, dN)
+function az(dN, dE) {
+  return ((Math.atan2(dE, dN) * 180 / Math.PI) % 360 + 360) % 360;
+}
+
+function calcAll() {
+
+  // ── TAB 0: AZ y DH ──────────────────────────────────────────
+  const iN = v('ini_norte'), iE = v('ini_este');
+  const vN = v('vis_norte'), vE = v('vis_este');
+  let az_dec = null;
+
+  if (iN!==null && iE!==null && vN!==null && vE!==null) {
+    const dh = Math.sqrt((vN-iN)**2 + (vE-iE)**2);
+    az_dec = az(vN-iN, vE-iE);
+    const p = azParts(az_dec);
+    set('res_dh', fmt(dh));
+    set('res_az', fmtAZ(az_dec));
+    set('az_g', p.g); set('az_m', p.m); set('az_s', p.s);
+  } else {
+    ['res_dh','res_az','az_g','az_m','az_s'].forEach(id => set(id,'—'));
+  }
+
+  // ── TAB 1: Replanteo ─────────────────────────────────────────
+  if (az_dec !== null) {
+    const p = azParts(az_dec);
+    set('rep_az_display', fmtAZ(az_dec));
+    set('rep_az_g_d', p.g); set('rep_az_m_d', p.m); set('rep_az_s_d', p.s);
+  } else {
+    set('rep_az_display','— (calcule AZ y DH primero)');
+    set('rep_az_g_d','—'); set('rep_az_m_d','—'); set('rep_az_s_d','—');
+  }
+
+  set('rep_ini_norte_disp', iN!==null ? fmt(iN) : '— (calcule AZ y DH primero)');
+  set('rep_ini_este_disp',  iE!==null ? fmt(iE) : '— (calcule AZ y DH primero)');
+
+  const abs_v = v('rep_abs');
+  const ord_v = v('rep_ord');
+
+  let pN = null, pE = null;
+  if (az_dec!==null && iN!==null && iE!==null) {
+    const rad = az_dec * Math.PI / 180;
+    const a = abs_v !== null ? abs_v : 0;
+    const o = ord_v !== null ? ord_v : 0;
+    pN = iN + a*Math.cos(rad) - o*Math.sin(rad);
+    pE = iE + a*Math.sin(rad) + o*Math.cos(rad);
+  }
+  set('rep_res_norte', pN!==null ? fmt(pN) : '—');
+  set('rep_res_este',  pE!==null ? fmt(pE) : '—');
+
+  const eN = v('est_norte'), eE = v('est_este');
+  const dh_leida = v('rep_dh_leida');
+  let est_dh = null, est_az = null;
+
+  if (pN!==null && eN!==null && eE!==null) {
+    const dN = pN - eN, dE = pE - eE;
+    est_dh = Math.sqrt(dN*dN + dE*dE);
+    est_az = az(dN, dE);
+  }
+  set('rep_est_dh', est_dh!==null ? fmt(est_dh) : '—');
+  set('rep_est_az', est_az!==null ? fmtAZ(est_az) : '—');
+  set('rep_dif_dh', (est_dh!==null && dh_leida!==null) ? fmt(est_dh - dh_leida) : '—');
+
+  // ── TAB 2: ABS/ORD con coordenadas ──────────────────────────
+  const cN = v('coord_norte'), cE = v('coord_este');
+  let abs_calc = null, ord_calc = null;
+
+  if (cN!==null && cE!==null && iN!==null && iE!==null && az_dec!==null) {
+    const rad = az_dec * Math.PI / 180;
+    const dN = cN - iN, dE = cE - iE;
+    abs_calc = dN*Math.cos(rad) + dE*Math.sin(rad);
+    ord_calc  = dE*Math.cos(rad) - dN*Math.sin(rad);
+  }
+  set('coord_abs', abs_calc!==null ? fmt(abs_calc) : '—');
+  set('coord_ord', ord_calc!==null ? fmt(ord_calc) : '—');
+
+  // ── TAB 3: Diferencias ──────────────────────────────────────
+  const dabsl = v('dif_abs_leida'), dordl = v('dif_ord_leida');
+  set('dif_abs_calc', abs_calc!==null ? fmt(abs_calc) : '—');
+  set('dif_ord_calc', ord_calc!==null ? fmt(ord_calc) : '—');
+  set('dif_abs', (abs_calc!==null && dabsl!==null) ? fmt(abs_calc - dabsl) : '—');
+  set('dif_ord', (ord_calc!==null && dordl!==null) ? fmt(ord_calc - dordl) : '—');
+}
+
+// ── GUARDADO AUTOMÁTICO CON localStorage ──────────────────────
+const CAMPOS = ['ini_norte','ini_este','vis_norte','vis_este','rep_abs','rep_ord','est_norte','est_este','rep_dh_leida','coord_norte','coord_este','dif_abs_leida','dif_ord_leida'];
+
+function guardarDatos() {
+  const datos = {};
+  CAMPOS.forEach(id => { datos[id] = document.getElementById(id).value; });
+  localStorage.setItem('rectas_datos', JSON.stringify(datos));
+}
+
+function cargarDatos() {
+  const raw = localStorage.getItem('rectas_datos');
+  if (!raw) return;
+  try {
+    const datos = JSON.parse(raw);
+    CAMPOS.forEach(id => {
+      if (datos[id] !== undefined) document.getElementById(id).value = datos[id];
+    });
+  } catch(e) {}
+  calcAll();
+}
+
+function limpiarCampos(ids) {
+  ids.forEach(id => { document.getElementById(id).value = ''; });
+  guardarDatos();
+  calcAll();
+}
+
+function resetTab0() { limpiarCampos(['ini_norte','ini_este','vis_norte','vis_este']); }
+function resetTab1() { limpiarCampos(['rep_abs','rep_ord','est_norte','est_este','rep_dh_leida']); }
+function resetTab2() { limpiarCampos(['coord_norte','coord_este','dif_abs_leida','dif_ord_leida']); }
+
+// Guardar cada vez que el usuario escribe
+CAMPOS.forEach(id => {
+  document.getElementById(id).addEventListener('input', guardarDatos);
+});
+
+// Cargar datos guardados al abrir la app
+window.addEventListener('DOMContentLoaded', cargarDatos);
+
+// PWA Install
+let dp = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault(); dp = e;
+  if (!localStorage.getItem('r_dis')) setTimeout(()=>{ document.getElementById('install-banner').style.display='block'; }, 2000);
+});
+document.getElementById('btn-install').addEventListener('click', async () => {
+  if(dp){ dp.prompt(); await dp.userChoice; dp=null; document.getElementById('install-banner').style.display='none'; }
+});
+function dismissInstall(){ document.getElementById('install-banner').style.display='none'; localStorage.setItem('r_dis','1'); }
+
+// Service Worker para uso offline
+if ('serviceWorker' in navigator) {
+  const sw = `
+    const CACHE = 'rectas-v5';
+    self.addEventListener('install', e => {
+      self.skipWaiting();
+    });
+    self.addEventListener('activate', e => {
+      e.waitUntil(caches.keys().then(keys => Promise.all(
+        keys.filter(k => k !== CACHE).map(k => caches.delete(k))
+      )));
+      self.clients.claim();
+    });
+    self.addEventListener('fetch', e => {
+      e.respondWith(
+        caches.open(CACHE).then(cache =>
+          cache.match(e.request).then(cached => {
+            const fresh = fetch(e.request).then(response => {
+              if (response && response.status === 200) {
+                cache.put(e.request, response.clone());
+              }
+              return response;
+            }).catch(() => cached);
+            return cached || fresh;
+          })
+        )
+      );
+    });
+  `;
+  const blob = new Blob([sw], {type:'application/javascript'});
+  navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(()=>{});
+}
+</script>
+</body>
+</html>
